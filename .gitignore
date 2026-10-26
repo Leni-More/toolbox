@@ -1,0 +1,24 @@
+# 依赖
+node_modules/
+
+# npm 缓存（体积大，可重下）
+.npm-cache/
+
+# 二进制内核 yt-dlp / ffmpeg（108MB，用 npm run update-bin 重建）
+bin/
+
+# 运行期产物
+downloads/
+tmp/
+data/
+
+# 日志与临时文件
+*.log
+*.tmp
+
+# 系统与编辑器
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/

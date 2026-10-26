@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工具箱 · 视频下载</title>
+<style>
+  :root {
+    --bg: #0e1013;
+    --panel: #16191f;
+    --panel-2: #1c2027;
+    --line: #2a2f3a;
+    --text: #e8e6e1;
+    --muted: #8b9099;
+    --accent: #e8a33d;
+    --accent-2: #f2c37b;
+    --ok: #4fb477;
+    --err: #e05c5c;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    min-height: 100vh;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(232,163,61,.08), transparent);
+  }
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 28px; border-bottom: 1px solid var(--line);
+  }
+  .logo { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
+  .logo em { color: var(--accent); font-style: normal; }
+  .status { margin-left: auto; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--err); }
+  .dot.on { background: var(--ok); }
+  main {
+    max-width: 1080px; margin: 0 auto; padding: 28px 20px 60px;
+    display: grid; grid-template-columns: 1fr 340px; gap: 20px;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .panel h2 { font-size: 14px; color: var(--muted); font-weight: 600; margin-bottom: 14px; letter-spacing: 1px; }
+  .input-row { display: flex; gap: 10px; }
+  input[type=text] {
+    flex: 1; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 14px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #14100a; border: none; border-radius: 10px;
+    padding: 12px 22px; font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: transform .08s, filter .15s;
+  }
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+  .hint { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+  /* 结果卡 */
+  #result { margin-top: 18px; }
+  .card {
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; animation: rise .25s ease;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .card-head { display: flex; gap: 14px; padding: 16px; }
+  .cover { width: 168px; aspect-ratio: 16/10; object-fit: cover; border-radius: 8px; background: #000; flex-shrink: 0; }
+  .card-meta { min-width: 0; }
+  .card-title { font-size: 15px; font-weight: 600; line-height: 1.45; word-break: break-all; }
+  .card-sub { margin-top: 6px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .tag { background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 8px; }
+  .fmt-title { padding: 0 16px 8px; font-size: 12px; color: var(--muted); }
+  .fmts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
+  .fmt {
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px;
+    font-size: 13px; cursor: pointer; color: var(--text); background: var(--bg);
+  }
+  .fmt.sel { border-color: var(--accent); color: var(--accent-2); background: rgba(232,163,61,.08); }
+  .actions { display: flex; gap: 10px; padding: 0 16px 16px; }
+  /* 图集 */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; padding: 0 16px 10px; }
+  .cell { position: relative; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; aspect-ratio: 3/4; background: #000; }
+  .cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cell.sel { border-color: var(--accent); }
+  .cell .idx { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; border-radius: 4px; padding: 0 5px; }
+  .cell .tick { position: absolute; left: 4px; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; font-size: 11px; color: transparent; }
+  .cell.sel .tick { background: var(--accent); color: #14100a; }
+  /* 任务 */
+  .task { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .task-top { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-bottom: 8px; }
+  .task-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .task-stat { color: var(--muted); font-size: 12px; flex-shrink: 0; }
+  .bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); width: 0; transition: width .3s; border-radius: 3px; }
+  .task.err .bar i { background: var(--err); }
+  .task.done .bar i { background: var(--ok); }
+  .task-msg { margin-top: 6px; font-size: 11px; color: var(--err); word-break: break-all; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 26px 0; }
+  /* 历史 */
+  .hist { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .hist:last-child { border-bottom: none; }
+  .hist .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hist .s { color: var(--muted); font-size: 11px; flex-shrink: 0; }
+  .hist button { padding: 3px 10px; font-size: 11px; font-weight: 500; }
+  #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 20px; font-size: 13px; display: none; z-index: 99; box-shadow: 0 8px 30px rgba(0,0,0,.5); }
+  #toast.err { border-color: var(--err); color: var(--err); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">工具<em>箱</em></div>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">连接中</span></div>
+</header>
+<main>
+  <section class="panel">
+    <h2>链接解析</h2>
+    <div class="input-row">
+      <input type="text" id="url" placeholder="粘贴链接或整段分享口令（抖音/B站分享文本可直接粘贴）" spellcheck="false">
+      <button id="btnResolve" onclick="doResolve()">解析</button>
+    </div>
+    <div class="hint">支持：抖音视频/图集 · B站视频（多清晰度）· 快手 / 小红书 / 微博 · YouTube（需代理）。下载完成后文件位于 toolbox\downloads\</div>
+    <div id="result"></div>
+  </section>
+
+  <aside>
+    <div class="panel" style="margin-bottom:20px">
+      <h2>下载队列</h2>
+      <div id="tasks"><div class="empty">暂无任务</div></div>
+    </div>
+    <div class="panel">
+      <h2>历史记录</h2>
+      <div id="history"><div class="empty">暂无记录</div></div>
+    </div>
+  </aside>
+</main>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let current = null;       // 当前解析结果
+let selFormat = 'best';
+let selItems = new Set();
+const taskEls = new Map();
+
+function toast(msg, isErr) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = isErr ? 'err' : '';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.style.display = 'none', 3200);
+}
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || r.statusText);
+  return d;
+}
+
+async function doResolve() {
+  const url = $('#url').value.trim();
+  if (!url) return toast('请先粘贴链接', true);
+  $('#btnResolve').disabled = true;
+  $('#btnResolve').textContent = '解析中';
+  try {
+    current = await api('/api/resolve', { url });
+    selFormat = 'best';
+    selItems = new Set();
+    renderResult();
+  } catch (e) {
+    toast('解析失败: ' + e.message, true);
+  } finally {
+    $('#btnResolve').disabled = false;
+    $('#btnResolve').textContent = '解析';
+  }
+}
+
+function fmtSize(n) {
+  if (!n) return '';
+  const u = ['B','KB','MB','GB']; let i = 0, v = n;
+  while (v >= 1024 && i < 3) { v /= 1024; i++; }
+  return v.toFixed(1) + u[i];
+}
+
+function fmtDur(s) {
+  if (!s) return '';
+  const m = Math.floor(s / 60), ss = Math.round(s % 60);
+  return `${m}:${String(ss).padStart(2, '0')}`;
+}
+
+function renderResult() {
+  const c = current;
+  const head = `
+    <div class="card-head">
+      ${c.thumbnail ? `<img class="cover" src="${c.thumbnail}" onerror="this.style.display='none'">` : ''}
+      <div class="card-meta">
+        <div class="card-title">${esc(c.title)}</div>
+        <div class="card-sub">
+          <span class="tag">${esc(c.platformName)}</span>
+          ${c.uploader ? `<span>${esc(c.uploader)}</span>` : ''}
+          ${c.duration ? `<span>${fmtDur(c.duration)}</span>` : ''}
+          ${c.count ? `<span>共 ${c.count} 项</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  let body = '';
+  if (c.kind === 'video' && c.formats) {
+    const opts = [{ format_id: 'best', label: '最佳画质' }, ...c.formats];
+    body = `
+      <div class="fmt-title">选择清晰度</div>
+      <div class="fmts">${opts.map(f =>
+        `<div class="fmt ${f.format_id === selFormat ? 'sel' : ''}" data-f="${f.format_id}" onclick="pickFmt(this)">${f.label}</div>`
+      ).join('')}</div>
+      <div class="actions">
+        <button onclick="doDownload('video')">下载视频</button>
+        <button class="ghost" onclick="doDownload('audio')">仅音频 MP3</button>
+      </div>`;
+  } else {
+    body = `
+      <div class="fmt-title">共 ${c.count} 项，点击选择（已选 <b id="selCount">0</b>）</div>
+      <div class="grid">${c.entries.map(e => `
+        <div class="cell" data-i="${e.index}" onclick="pickItem(this)">
+          ${e.thumbnail ? `<img src="${esc(e.thumbnail)}" loading="lazy" onerror="this.style.opacity=0">` : ''}
+          <span class="tick">✓</span><span class="idx">${e.index}</span>
+        </div>`).join('')}</div>
+      <div class="actions">
+        <button onclick="selAll()">全选</button>
+        <button id="btnGallery" onclick="doDownload('gallery')">下载选中</button>
+      </div>`;
+  }
+  $('#result').innerHTML = `<div class="card">${head}${body}</div>`;
+}
+
+function pickFmt(el) {
+  selFormat = el.dataset.f;
+  document.querySelectorAll('.fmt').forEach(x => x.classList.toggle('sel', x === el));
+}
+function pickItem(el) {
+  const i = Number(el.dataset.i);
+  selItems.has(i) ? selItems.delete(i) : selItems.add(i);
+  el.classList.toggle('sel', selItems.has(i));
+  const n = $('#selCount'); if (n) n.textContent = selItems.size;
+}
+function selAll() {
+  selItems = new Set(current.entries.map(e => e.index));
+  document.querySelectorAll('.cell').forEach(el => el.classList.add('sel'));
+  const n = $('#selCount'); if (n) n.textContent = selItems.size;
+}
+
+async function doDownload(mode) {
+  if (!current) return;
+  try {
+    await api('/api/download', {
+      url: current.webpage_url,
+      mode,
+      formatId: mode === 'video' ? selFormat : null,
+      items: current.is_collection ? [...selItems].sort() : null,
+      directUrl: current.directUrl || null,
+      directUrls: current.is_collection && current.entries?.[0]?.url
+        ? current.entries.filter(e => selItems.has(e.index)).map(e => e.url)
+        : null,
+      title: current.title,
+    });
+    toast('已加入下载队列');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- SSE 任务流 ----------
+const es = new EventSource('/api/events');
+es.onopen = () => { $('#dot').classList.add('on'); $('#statusText').textContent = '已连接'; };
+es.onerror = () => { $('#dot').classList.remove('on'); $('#statusText').textContent = '连接断开，重试中'; };
+es.onmessage = (ev) => {
+  const d = JSON.parse(ev.data);
+  if (d.type === 'hello') { d.tasks.forEach(upsertTask); return; }
+  if (d.task) upsertTask(d.task);
+  if (d.type === 'done') toast('下载完成: ' + (d.task.title || d.task.file || ''));
+  if (d.type === 'error') toast('下载失败: ' + (d.task.error || ''), true);
+};
+
+function upsertTask(t) {
+  const box = $('#tasks');
+  box.querySelector('.empty')?.remove();
+  let el = taskEls.get(t.id);
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'task';
+    el.innerHTML = `<div class="task-top"><span class="task-title"></span><span class="task-stat"></span></div><div class="bar"><i></i></div><div class="task-msg" style="display:none"></div>`;
+    box.prepend(el);
+    taskEls.set(t.id, el);
+  }
+  el.className = 'task' + (t.status === 'error' ? ' err' : t.status === 'done' ? ' done' : '');
+  el.querySelector('.task-title').textContent = t.title || t.url;
+  const stat = t.status === 'done' ? '完成'
+    : t.status === 'merging' ? '合并中'
+    : t.status === 'error' ? '失败'
+    : `${t.progress}%${t.speed ? ' · ' + t.speed : ''}${t.eta ? ' · 剩' + t.eta : ''}`;
+  el.querySelector('.task-stat').textContent = stat;
+  el.querySelector('.bar i').style.width = t.progress + '%';
+  const msg = el.querySelector('.task-msg');
+  if (t.status === 'error') { msg.style.display = 'block'; msg.textContent = t.error || ''; }
+  else msg.style.display = 'none';
+}
+
+// ---------- 历史 ----------
+async function loadHistory() {
+  try {
+    const h = await api('/api/history');
+    const box = $('#history');
+    if (!h.downloads.length) return;
+    box.innerHTML = h.downloads.map(d => `
+      <div class="hist">
+        <span class="t" title="${esc(d.title)}">${esc(d.title)}</span>
+        <span class="s">${d.size ? fmtSize(d.size) : ''}</span>
+        <button class="ghost" onclick="reveal('${esc(d.file || '')}')">打开</button>
+      </div>`).join('');
+  } catch { /* ignore */ }
+}
+async function reveal(target) {
+  await api('/api/reveal', { target });
+}
+
+loadHistory();
+</script>
+</body>
+</html>
